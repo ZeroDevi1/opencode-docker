@@ -50,7 +50,22 @@ docker run --rm -p 4096:4096 \
 
 ## 远程部署建议
 
-推荐把 OpenCode 作为现有 `codex + nginx + acme` 栈中的一个额外服务加入：
+推荐把 OpenCode 作为现有 `codex + nginx + acme` 栈中的一个额外服务加入。
+
+如果你的远程环境和当前现网一样，不能给 OpenCode 单独占用宿主机 `80/443`，推荐使用“同域名 + 独立端口”模式：
+
+- Codex：
+  - `http://ugos.zerodevi1.xyz:5000`
+  - `https://ugos.zerodevi1.xyz:5001`
+- OpenCode：
+  - `http://ugos.zerodevi1.xyz:4395`
+  - `https://ugos.zerodevi1.xyz:4396`
+
+这里有一个关键点：不能只在 Docker 里把 `4395:80`、`4396:443` 映射出去，因为这样请求进入 Nginx 后仍然只会落到容器内的 `80/443`，Nginx 无法按“外部端口”区分 Codex 和 OpenCode。正确做法是：
+
+- Codex 在 Nginx 容器内继续监听 `80/443`
+- OpenCode 在 Nginx 容器内额外监听 `4395/4396`
+- 宿主机端口一一映射到容器内同名端口
 
 - 共享卷：
   - `./workspace:/workspace`
@@ -71,6 +86,7 @@ docker run --rm -p 4096:4096 \
 
 - [examples/compose.remote.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.remote.yaml)
 - [examples/nginx.opencode.conf](D:/Projects/ZedProjects/opencode-docker/examples/nginx.opencode.conf)
+- [nginx.conf](D:/Projects/ZedProjects/opencode-docker/nginx.conf)
 
 ## Compose 合并要点
 
@@ -102,7 +118,22 @@ docker run --rm -p 4096:4096 \
       '
 ```
 
-Nginx 建议新增一个独立子域名，例如 `opencode.example.com`，反代到容器内的 `http://opencode:4096`。为保证服务端推送、事件流和未来扩展稳定，建议至少带上这些代理头：
+如果走“同域名 + 独立端口”模式，Nginx 需要同时监听这四个端口：
+
+```yaml
+ports:
+  - "5000:80"
+  - "5001:443"
+  - "4395:4395"
+  - "4396:4396"
+```
+
+对应的 Nginx 路由关系是：
+
+- `80/443 -> codex:5000`
+- `4395/4396 -> opencode:4096`
+
+HTTPS 证书可以直接复用 `ugos.zerodevi1.xyz` 的同一套证书文件。为保证服务端推送、事件流和未来扩展稳定，建议至少带上这些代理头：
 
 ```nginx
 proxy_http_version 1.1;
@@ -116,7 +147,7 @@ proxy_read_timeout 3600s;
 proxy_send_timeout 3600s;
 ```
 
-ACME 容器可以沿用现有模式，只需要把 `TARGET_DOMAIN` 扩展成同时处理 Codex 和 OpenCode 的域名列表，或额外增加一个 `OPENCODE_DOMAIN` 环境变量，并在初始化脚本中逐个检查是否已有证书。
+如果 Codex 和 OpenCode 共用同一个域名，ACME 容器只需要维护一套 `TARGET_DOMAIN=ugos.zerodevi1.xyz` 证书即可，不需要再额外申请 `OPENCODE_DOMAIN`。
 
 ## GHCR 自动构建
 
