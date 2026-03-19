@@ -1,0 +1,110 @@
+version: "3.8"
+
+services:
+  codex:
+    image: ghcr.io/zerodevi1/codex-docker:latest
+    container_name: codex-dev
+    restart: unless-stopped
+    volumes:
+      - ./workspace:/workspace
+      - ./codex-data:/home/devuser/.codex
+      - ./version-fox:/home/devuser/.version-fox
+      - ./ssh_keys:/home/devuser/.ssh
+      - ./ssh_keys/.gitconfig:/home/devuser/.gitconfig
+    environment:
+      - CODEX_TOKEN=change-me
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+    command: >
+      sh -c '
+        exec codex serve \
+          --host 0.0.0.0 \
+          --port 5000 \
+          --token "$${CODEX_TOKEN}"
+      '
+
+  opencode:
+    image: ghcr.io/<owner>/opencode-docker:latest
+    container_name: opencode-dev
+    restart: unless-stopped
+    volumes:
+      - ./workspace:/workspace
+      - ./opencode-config:/home/devuser/.config/opencode
+      - ./opencode-data:/home/devuser/.local/share/opencode
+      - ./version-fox:/home/devuser/.version-fox
+      - ./ssh_keys:/home/devuser/.ssh
+      - ./ssh_keys/.gitconfig:/home/devuser/.gitconfig
+    environment:
+      - OPENCODE_SERVER_USERNAME=admin
+      - OPENCODE_SERVER_PASSWORD=change-me
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Shanghai
+    command: >
+      sh -c '
+        exec opencode serve \
+          --hostname 0.0.0.0 \
+          --port 4096
+      '
+
+  nginx:
+    image: nginx:alpine
+    container_name: codex-nginx
+    restart: unless-stopped
+    ports:
+      - "5000:80"
+      - "5001:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./nginx-log:/var/log/nginx
+    depends_on:
+      - codex
+      - opencode
+      - acme
+
+  acme:
+    image: neilpang/acme.sh:latest
+    container_name: codex-acme
+    restart: unless-stopped
+    volumes:
+      - ./letsencrypt:/acme.sh
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - Ali_Key=your-ali-key
+      - Ali_Secret=your-ali-secret
+      - TARGET_DOMAIN=codex.example.com
+      - OPENCODE_DOMAIN=opencode.example.com
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -eu
+        apk add --no-cache docker-cli
+
+        issue_cert() {
+          domain="$1"
+          if [ -z "$domain" ]; then
+            return 0
+          fi
+
+          if [ ! -f "/acme.sh/${domain}.pem" ]; then
+            echo "[Init] 为 ${domain} 申请证书..."
+            /usr/local/bin/acme.sh --issue --dns dns_ali -d "${domain}" --server letsencrypt
+
+            echo "[Init] 安装 ${domain} 证书并配置 Nginx 重载钩子..."
+            /usr/local/bin/acme.sh --install-cert -d "${domain}" \
+              --key-file       /acme.sh/${domain}.key \
+              --fullchain-file /acme.sh/${domain}.pem \
+              --reloadcmd      "docker exec codex-nginx nginx -s reload"
+          else
+            echo "[Init] ${domain} 证书已存在，跳过首次签发。"
+          fi
+        }
+
+        issue_cert "$${TARGET_DOMAIN}"
+        issue_cert "$${OPENCODE_DOMAIN}"
+
+        echo "[Init] 启动 cron 守护进程..."
+        exec crond -f
