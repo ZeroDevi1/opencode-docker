@@ -61,6 +61,7 @@ ENV UV_SYSTEM_PYTHON=1
 
 RUN curl -fsSL https://qlty.sh | sh
 ENV PATH="/home/devuser/.qlty/bin:${PATH}"
+ENV PATH="/home/devuser/.opencode/bin:${PATH}"
 
 RUN echo 'eval "$(vfox activate bash)"' >> /home/devuser/.bashrc \
     && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.profile
@@ -78,9 +79,19 @@ RUN bash -lc " \
 RUN bash -lc " \
     corepack enable && \
     corepack prepare pnpm@latest --activate && \
-    npm install -g ace-tool && \
-    npm install -g opencode-ai@${OPENCODE_VERSION} \
+    npm install -g ace-tool \
 "
+
+# 使用官方安装脚本安装 opencode，可稳定产出可执行二进制
+RUN bash -lc ' \
+    set -euo pipefail; \
+    if [ "${OPENCODE_VERSION}" = "latest" ]; then \
+        curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path; \
+    else \
+        curl -fsSL https://opencode.ai/install | bash -s -- --version "${OPENCODE_VERSION}" --no-modify-path; \
+    fi; \
+    test -x /home/devuser/.opencode/bin/opencode \
+'
 
 USER root
 

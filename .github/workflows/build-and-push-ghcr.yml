@@ -35,22 +35,22 @@ jobs:
           set -euo pipefail
           echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve upstream opencode version
-        id: version
+      - name: Resolve upstream opencode release
+        id: release
         shell: bash
         run: |
           set -euo pipefail
-          opencode_version="$(curl --fail --show-error --silent --location \
+          opencode_ref="$(curl --fail --show-error --silent --location \
             --retry 8 \
             --retry-delay 2 \
             --retry-max-time 120 \
             --retry-all-errors \
-            https://registry.npmjs.org/opencode-ai/latest | jq -r .version)"
-          if [ -z "${opencode_version}" ] || [ "${opencode_version}" = "null" ]; then
-            echo "Failed to resolve latest opencode-ai version" >&2
+            https://api.github.com/repos/anomalyco/opencode/releases/latest | jq -r .tag_name)"
+          if [ -z "${opencode_ref}" ] || [ "${opencode_ref}" = "null" ]; then
+            echo "Failed to resolve latest opencode release tag" >&2
             exit 1
           fi
-          echo "opencode_version=${opencode_version}" >> "$GITHUB_OUTPUT"
+          echo "opencode_ref=${opencode_ref}" >> "$GITHUB_OUTPUT"
 
       - name: Login GHCR
         uses: docker/login-action@v3
@@ -66,7 +66,7 @@ jobs:
         run: |
           set -euo pipefail
           image="ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker"
-          tag="${{ steps.version.outputs.opencode_version }}"
+          tag="${{ steps.release.outputs.opencode_ref }}"
           if docker buildx imagetools inspect "${image}:${tag}" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -78,7 +78,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Skip build: ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:${{ steps.version.outputs.opencode_version }} already exists"
+          echo "Skip build: ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:${{ steps.release.outputs.opencode_ref }} already exists"
 
       - name: Build & Push
         if: github.event_name != 'schedule' || steps.exists.outputs.exists != 'true'
@@ -88,9 +88,9 @@ jobs:
           push: true
           platforms: linux/amd64
           build-args: |
-            OPENCODE_VERSION=${{ steps.version.outputs.opencode_version }}
+            OPENCODE_VERSION=${{ steps.release.outputs.opencode_ref }}
           tags: |
-            ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:${{ steps.version.outputs.opencode_version }}
+            ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:${{ steps.release.outputs.opencode_ref }}
             ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

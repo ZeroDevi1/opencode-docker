@@ -14,6 +14,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 ```
 
 - 适合与现有 Codex 远程栈并行部署，共享 `workspace`、`.version-fox`、`.ssh`、`.gitconfig`，但分离 OpenCode 自身配置与会话数据。
+- 镜像内的 OpenCode 通过官方安装脚本安装到 `/home/devuser/.opencode/bin/opencode`，并已加入 `PATH`。
 
 ## 本地构建
 
@@ -66,6 +67,12 @@ docker run --rm -p 4096:4096 \
 - Codex 在 Nginx 容器内继续监听 `80/443`
 - OpenCode 在 Nginx 容器内额外监听 `4395/4396`
 - 宿主机端口一一映射到容器内同名端口
+
+这不会和 OpenCode 服务本身冲突，因为：
+
+- `opencode` 容器内服务端口仍然是 `4096`
+- `4395/4396` 是 `nginx` 容器内监听并暴露到宿主机的端口
+- 两者属于不同容器，不共享监听套接字
 
 - 共享卷：
   - `./workspace:/workspace`
@@ -154,14 +161,14 @@ proxy_send_timeout 3600s;
 仓库包含 GitHub Actions 工作流：
 
 - 文件：[.github/workflows/build-and-push-ghcr.yml](D:/Projects/ZedProjects/opencode-docker/.github/workflows/build-and-push-ghcr.yml)
-- 版本来源：`https://registry.npmjs.org/opencode-ai/latest`
+- 版本来源：`https://api.github.com/repos/anomalyco/opencode/releases/latest`
 - 推送标签：
-  - `ghcr.io/<owner>/opencode-docker:<npm-version>`
+  - `ghcr.io/<owner>/opencode-docker:<release-tag>`
   - `ghcr.io/<owner>/opencode-docker:latest`
 
 行为与 `codex-docker` 基本一致：
 
-- `schedule`：每天检查一次最新 npm 版本；若 GHCR 已存在同 tag 镜像则跳过。
+- `schedule`：每天检查一次最新 Release；若 GHCR 已存在同 tag 镜像则跳过。
 - `push`：推送 `main` 且相关文件变更时，始终重建。
 - `workflow_dispatch`：支持手动触发构建。
 
