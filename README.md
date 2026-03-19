@@ -15,6 +15,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 
 - 适合与现有 Codex 远程栈并行部署，共享 `workspace`、`.version-fox`、`.ssh`、`.gitconfig`，但分离 OpenCode 自身配置与会话数据。
 - 镜像内的 OpenCode 通过官方安装脚本安装到 `/home/devuser/.opencode/bin/opencode`，并已加入 `PATH`。
+- Node.js、`ace-tool`、`@upstash/context7-mcp` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
 
 ## 本地构建
 
@@ -26,6 +27,18 @@ docker build -t opencode-docker:local .
 
 ```bash
 docker build --build-arg OPENCODE_VERSION=1.2.27 -t opencode-docker:1.2.27 .
+```
+
+默认会准备：
+
+- `nodejs@22.14.0`
+- 全局 npm 包：`ace-tool`、`@upstash/context7-mcp`
+
+如需覆盖，可在运行时传入：
+
+```bash
+-e VFOX_NODE_VERSION=22.14.0
+-e VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp"
 ```
 
 ## 本地运行
@@ -48,6 +61,46 @@ docker run --rm -p 4096:4096 \
 - `http://127.0.0.1:4096/doc`
 
 如果设置了 `OPENCODE_SERVER_PASSWORD`，需要使用 HTTP Basic Auth 访问。
+
+## MCP 与共享 vfox
+
+如果你把 `./version-fox` 同时挂给 `codex` 和 `opencode`，推荐让 MCP 直接调用已经安装好的全局命令，而不是每次走 `npx` 冷启动：
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "ace-tool": {
+      "type": "local",
+      "command": [
+        "ace-tool",
+        "--base-url",
+        "https://acemcp.heroman.wtf/relay/",
+        "--token",
+        "YOUR_ACE_TOKEN"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    },
+    "context7": {
+      "type": "local",
+      "command": [
+        "context7-mcp",
+        "--api-key",
+        "YOUR_CONTEXT7_API_KEY"
+      ],
+      "enabled": true,
+      "timeout": 30000
+    }
+  }
+}
+```
+
+说明：
+
+- `vfox use -g` 用于持久化全局版本。
+- `vfox use`（默认 Session 级）用于让当前 shell 立刻拿到 `node/npm/npx` 的 `PATH`。这是你刚才手工执行后仍然出现 `npm: command not found` 的直接原因。
+- 如果卷是第一次挂载，entrypoint 会自动安装 Node 和全局 npm 包；后续两个容器都能复用。
 
 ## 远程部署建议
 
