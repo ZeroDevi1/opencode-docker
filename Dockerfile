@@ -54,6 +54,12 @@ RUN (id -u ubuntu >/dev/null 2>&1 && userdel -r ubuntu) || true && \
 USER devuser
 WORKDIR /home/devuser
 
+RUN mkdir -p "${VFOX_HOME}" \
+    "${VFOX_HOME}/plugin" \
+    "${VFOX_HOME}/cache" \
+    "${VFOX_HOME}/sdks" \
+    "${VFOX_HOME}/tmp"
+
 # Rust / uv / qlty 保持与 codex-docker 一致，方便远程开发
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 ENV PATH="/home/devuser/.cargo/bin:${PATH}"
