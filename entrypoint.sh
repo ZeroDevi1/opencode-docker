@@ -22,6 +22,38 @@ ensure_owned_dir() {
     chown -R devuser:devgroup "$target"
 }
 
+bootstrap_vfox_node() {
+    local node_version="${VFOX_NODE_VERSION:-22.14.0}"
+    local npm_packages="${VFOX_GLOBAL_NPM_PACKAGES:-ace-tool @upstash/context7-mcp}"
+
+    echo "Bootstrapping shared vfox toolchain..."
+    gosu devuser bash -lc "
+        set -e
+        eval \"\$(vfox activate bash)\"
+
+        vfox add nodejs >/dev/null 2>&1 || true
+
+        if ! vfox list nodejs 2>/dev/null | grep -q \"${node_version}\"; then
+            vfox install nodejs@${node_version}
+        fi
+
+        vfox use -g nodejs@${node_version}
+        vfox use nodejs@${node_version}
+        hash -r
+
+        corepack enable >/dev/null 2>&1 || true
+
+        for pkg in ${npm_packages}; do
+            if ! npm list -g --depth=0 \"\$pkg\" >/dev/null 2>&1; then
+                npm install -g \"\$pkg\"
+            fi
+        done
+
+        command -v node >/dev/null
+        command -v npm >/dev/null
+    "
+}
+
 if [ -d "/home/devuser/.ssh" ]; then
     echo "Securing mounted SSH keys..."
 
@@ -58,6 +90,12 @@ ensure_owned_dir /home/devuser/.local
 ensure_owned_dir /home/devuser/.local/share
 ensure_owned_dir /home/devuser/.local/share/opencode
 ensure_owned_dir /home/devuser/.version-fox
+if [ ! -e /home/devuser/.vfox ]; then
+    ln -s /home/devuser/.version-fox /home/devuser/.vfox
+fi
+chown -h devuser:devgroup /home/devuser/.vfox 2>/dev/null || true
+
+bootstrap_vfox_node
 
 echo "Starting application..."
 exec gosu devuser bash -lc 'exec "$@"' -- "$@"

@@ -4,6 +4,9 @@ ARG OPENCODE_VERSION=latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV OPENCODE_VERSION=${OPENCODE_VERSION}
+ENV VFOX_NODE_VERSION=22.14.0
+ENV VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp"
+ENV VFOX_HOME=/home/devuser/.version-fox
 
 # 使用国内镜像源以提升构建稳定性
 RUN sed -i 's/archive.ubuntu.com/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/ubuntu.sources \
@@ -39,7 +42,7 @@ RUN set -eux; \
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \
-    printf '%s\n' 'eval "$(vfox activate bash)"' > /etc/profile.d/vfox.sh; \
+    printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' 'eval "$(vfox activate bash)"' > /etc/profile.d/vfox.sh; \
     chmod 0644 /etc/profile.d/vfox.sh
 
 # 预创建标准开发用户，便于与宿主机 UID/GID 对齐
@@ -64,7 +67,11 @@ ENV PATH="/home/devuser/.qlty/bin:${PATH}"
 ENV PATH="/home/devuser/.opencode/bin:${PATH}"
 
 RUN echo 'eval "$(vfox activate bash)"' >> /home/devuser/.bashrc \
-    && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.profile
+    && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.profile \
+    && printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' | cat - /home/devuser/.bashrc > /home/devuser/.bashrc.tmp \
+    && mv /home/devuser/.bashrc.tmp /home/devuser/.bashrc \
+    && printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' | cat - /home/devuser/.profile > /home/devuser/.profile.tmp \
+    && mv /home/devuser/.profile.tmp /home/devuser/.profile
 
 RUN bash -lc " \
     vfox add java && \
@@ -73,13 +80,14 @@ RUN bash -lc " \
     vfox install java@8.0.332 && \
     vfox use -g java@21.0.1+12 && \
     vfox install nodejs@22.14.0 && \
-    vfox use -g nodejs@22.14.0 \
+    vfox use -g nodejs@22.14.0 && \
+    vfox use nodejs@22.14.0 \
 "
 
 RUN bash -lc " \
     corepack enable && \
     corepack prepare pnpm@latest --activate && \
-    npm install -g ace-tool \
+    npm install -g ace-tool @upstash/context7-mcp \
 "
 
 # 使用官方安装脚本安装 opencode，可稳定产出可执行二进制
