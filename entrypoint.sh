@@ -22,12 +22,32 @@ ensure_owned_dir() {
     chown -R devuser:devgroup "$target"
 }
 
+with_vfox_bootstrap_lock() {
+    local lock_dir="/tmp/vfox-bootstrap.lock"
+    local wait_seconds=0
+
+    while ! mkdir "$lock_dir" 2>/dev/null; do
+        wait_seconds=$((wait_seconds + 1))
+        if [ "$wait_seconds" -eq 1 ]; then
+            echo "Waiting for shared vfox bootstrap lock..."
+        fi
+        if [ "$wait_seconds" -ge 120 ]; then
+            echo "Timed out waiting for shared vfox bootstrap lock" >&2
+            return 1
+        fi
+        sleep 1
+    done
+
+    trap 'rmdir "$lock_dir" 2>/dev/null || true' RETURN
+    "$@"
+}
+
 bootstrap_vfox_node() {
     local node_version="${VFOX_NODE_VERSION:-22.14.0}"
     local npm_packages="${VFOX_GLOBAL_NPM_PACKAGES:-ace-tool @upstash/context7-mcp}"
 
     echo "Bootstrapping shared vfox toolchain..."
-    gosu devuser bash -lc "
+    with_vfox_bootstrap_lock gosu devuser bash -lc "
         set -e
         eval \"\$(vfox activate bash)\"
 
