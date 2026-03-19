@@ -14,7 +14,7 @@ services:
     environment:
       - CODEX_TOKEN=change-me
       - PUID=1000
-      - PGID=1000
+      - PGID=10
       - TZ=Asia/Shanghai
     command: >
       sh -c '
@@ -39,7 +39,7 @@ services:
       - OPENCODE_SERVER_USERNAME=admin
       - OPENCODE_SERVER_PASSWORD=change-me
       - PUID=1000
-      - PGID=1000
+      - PGID=10
       - TZ=Asia/Shanghai
     command: >
       sh -c '
