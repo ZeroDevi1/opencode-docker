@@ -2,6 +2,8 @@ name: build-and-push-ghcr
 
 on:
   schedule:
+    # 每天检查一次上游 Release（GitHub schedule 使用 UTC，触发时间为 best-effort）
+    # 01:17 UTC = 09:17 Asia/Shanghai
     - cron: "17 1 * * *"
   workflow_dispatch: {}
   push:
@@ -35,8 +37,8 @@ jobs:
           set -euo pipefail
           echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve upstream opencode release
-        id: release
+      - name: Resolve upstream opencode ref
+        id: ref
         shell: bash
         run: |
           set -euo pipefail
@@ -66,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           image="ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker"
-          tag="${{ steps.release.outputs.opencode_ref }}"
+          tag="${{ steps.ref.outputs.opencode_ref }}"
           if docker buildx imagetools inspect "${image}:${tag}" >/dev/null 2>&1; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -78,7 +80,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "Skip build: ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:${{ steps.release.outputs.opencode_ref }} already exists"
+          echo "Skip build: ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:${{ steps.ref.outputs.opencode_ref }} already exists"
 
       - name: Build & Push
         if: github.event_name != 'schedule' || steps.exists.outputs.exists != 'true'
@@ -88,9 +90,9 @@ jobs:
           push: true
           platforms: linux/amd64
           build-args: |
-            OPENCODE_VERSION=${{ steps.release.outputs.opencode_ref }}
+            OPENCODE_VERSION=${{ steps.ref.outputs.opencode_ref }}
           tags: |
-            ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:${{ steps.release.outputs.opencode_ref }}
+            ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:${{ steps.ref.outputs.opencode_ref }}
             ghcr.io/${{ steps.owner.outputs.owner }}/opencode-docker:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
