@@ -70,6 +70,8 @@ ENV UV_SYSTEM_PYTHON=1
 
 RUN curl -fsSL https://qlty.sh | sh
 ENV PATH="/home/devuser/.qlty/bin:${PATH}"
+RUN curl -fsSL https://bun.com/install | bash && test -x /home/devuser/.bun/bin/bun
+ENV PATH="/home/devuser/.bun/bin:${PATH}"
 ENV PATH="/home/devuser/.opencode/bin:${PATH}"
 
 RUN echo 'eval "$(vfox activate bash)"' >> /home/devuser/.bashrc \
