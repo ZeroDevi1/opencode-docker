@@ -4,7 +4,7 @@
 
 ## 功能概览
 
-- 基于 `ubuntu:24.04`，内置 `git`、`ssh`、`ffmpeg`、`uv`、`qlty`、`Rust`。
+- 基于 `ubuntu:24.04`，内置 `git`、`ssh`、`ffmpeg`、`uv`、`qlty`、`Rust`、`Bun`。
 - 统一使用 `vfox` 管理 Java / Node.js，方便容器内构建多语言项目。
 - 使用 `devuser` 运行服务，支持 `PUID` / `PGID` 动态映射宿主机权限。
 - 默认启动命令：
@@ -32,6 +32,7 @@ docker build --build-arg OPENCODE_VERSION=1.2.27 -t opencode-docker:1.2.27 .
 默认会准备：
 
 - `nodejs@22.14.0`
+- `bun`（官方安装脚本，默认位于 `/home/devuser/.bun/bin/bun`）
 - 全局 npm 包：`ace-tool`、`@upstash/context7-mcp`
 
 如需覆盖，可在运行时传入：
@@ -39,6 +40,12 @@ docker build --build-arg OPENCODE_VERSION=1.2.27 -t opencode-docker:1.2.27 .
 ```bash
 -e VFOX_NODE_VERSION=22.14.0
 -e VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp"
+```
+
+构建完成后，可快速验证关键工具是否已就绪：
+
+```bash
+docker run --rm opencode-docker:local bash -lc "bun --version && opencode --version"
 ```
 
 ## 本地运行
