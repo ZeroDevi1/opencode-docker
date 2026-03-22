@@ -2,6 +2,8 @@
 
 基于上游 [OpenCode](https://github.com/anomalyco/opencode) 的 Docker 镜像封装，目标是复用 `codex-docker` 的开发容器体验，同时提供可直接接入远程 Nginx 反代的 `opencode serve` 运行镜像。
 
+> 免责声明：本项目不是 OpenCode 团队官方开发或维护的项目，与 OpenCode 团队不存在隶属、代理或其他官方关联关系。
+
 ## 功能概览
 
 - 基于 `ubuntu:24.04`，内置 `git`、`ssh`、`ffmpeg`、`uv`、`qlty`、`Rust`、`Bun`。
