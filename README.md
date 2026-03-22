@@ -15,7 +15,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 
 - 适合与现有 Codex 远程栈并行部署，共享 `workspace`、`.version-fox`、`.ssh`、`.gitconfig`，但分离 OpenCode 自身配置与会话数据。
 - 镜像内的 OpenCode 通过官方安装脚本安装到 `/home/devuser/.opencode/bin/opencode`，并已加入 `PATH`。
-- Node.js、`ace-tool`、`@upstash/context7-mcp` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
+- Node.js、`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
 
 ## 本地构建
 
@@ -33,19 +33,19 @@ docker build --build-arg OPENCODE_VERSION=1.2.27 -t opencode-docker:1.2.27 .
 
 - `nodejs@22.14.0`
 - `bun`（官方安装脚本，默认位于 `/home/devuser/.bun/bin/bun`）
-- 全局 npm 包：`ace-tool`、`@upstash/context7-mcp`
+- 全局 npm 包：`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec@latest`
 
 如需覆盖，可在运行时传入：
 
 ```bash
 -e VFOX_NODE_VERSION=22.14.0
--e VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp"
+-e VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp @fission-ai/openspec@latest"
 ```
 
 构建完成后，可快速验证关键工具是否已就绪：
 
 ```bash
-docker run --rm opencode-docker:local bash -lc "bun --version && opencode --version"
+docker run --rm opencode-docker:local bash -lc "bun --version && opencode --version && openspec --version"
 ```
 
 ## 本地运行
