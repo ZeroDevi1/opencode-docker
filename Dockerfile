@@ -5,7 +5,7 @@ ARG OPENCODE_VERSION=latest
 ENV DEBIAN_FRONTEND=noninteractive
 ENV OPENCODE_VERSION=${OPENCODE_VERSION}
 ENV VFOX_NODE_VERSION=22.14.0
-ENV VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp"
+ENV VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp @fission-ai/openspec@latest"
 ENV VFOX_HOME=/home/devuser/.version-fox
 
 # 使用国内镜像源以提升构建稳定性
@@ -95,7 +95,7 @@ RUN bash -lc " \
 RUN bash -lc " \
     corepack enable && \
     corepack prepare pnpm@latest --activate && \
-    npm install -g ace-tool @upstash/context7-mcp \
+    npm install -g ace-tool @upstash/context7-mcp @fission-ai/openspec@latest \
 "
 
 # 使用官方安装脚本安装 opencode，可稳定产出可执行二进制
