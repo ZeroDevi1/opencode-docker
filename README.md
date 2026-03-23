@@ -16,7 +16,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 ```
 
 - 适合与现有 Codex 远程栈并行部署，共享 `workspace`、`.version-fox`、`.ssh`、`.gitconfig`，但分离 OpenCode 自身配置与会话数据。
-- 镜像内的 OpenCode 通过官方安装脚本安装到 `/home/devuser/.opencode/bin/opencode`，并已加入 `PATH`。
+- 镜像内的 OpenCode 在构建阶段通过 `npm i -g opencode-ai` 安装到独立目录 `/home/devuser/.local/npm-global/bin`，不会被共享的 `./version-fox` 挂载覆盖，运行时可直接执行 `opencode`。
 - Node.js、`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
 
 ## 本地构建
@@ -25,7 +25,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 docker build -t opencode-docker:local .
 ```
 
-如果你想固定 OpenCode 版本：
+如果你想固定 OpenCode 版本（npm 包版本，不带 `v` 前缀）：
 
 ```bash
 docker build --build-arg OPENCODE_VERSION=1.2.27 -t opencode-docker:1.2.27 .
@@ -256,9 +256,11 @@ proxy_send_timeout 3600s;
 
 行为与 `codex-docker` 基本一致：
 
-- `schedule`：每天检查一次最新 Release；若 GHCR 已存在同 tag 镜像则跳过。
+- `schedule`：每天检查一次最新 Release；若 GHCR 已存在同 `release-tag` 镜像则跳过。
 - `push`：推送 `main` 且相关文件变更时，始终重建。
-- `workflow_dispatch`：支持手动触发构建。
+- `workflow_dispatch`：支持手动触发构建；即使同版本镜像已存在，也会按当前最新 Release 重新构建。
+
+说明：GitHub Release tag 可能带 `v` 前缀（如 `v1.3.0`），工作流会保留该 tag 作为镜像标签，同时自动去掉前缀后再传给 `npm i -g opencode-ai@<version>`。在真正构建前，workflow 还会先校验 npm 上已发布对应的 `opencode-ai` 版本；若 npm 尚未同步该版本，则本次运行会直接失败，不会继续推镜像。
 
 ## 参考
 

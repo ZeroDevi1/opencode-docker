@@ -73,7 +73,7 @@ RUN curl -fsSL https://qlty.sh | sh
 ENV PATH="/home/devuser/.qlty/bin:${PATH}"
 RUN curl -fsSL https://bun.com/install | bash && test -x /home/devuser/.bun/bin/bun
 ENV PATH="/home/devuser/.bun/bin:${PATH}"
-ENV PATH="/home/devuser/.opencode/bin:${PATH}"
+ENV PATH="/home/devuser/.local/npm-global/bin:${PATH}"
 
 RUN echo 'eval "$(vfox activate bash)"' >> /home/devuser/.bashrc \
     && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.profile \
@@ -99,15 +99,13 @@ RUN bash -lc " \
     npm install -g ace-tool @upstash/context7-mcp @fission-ai/openspec@latest \
 "
 
-# 使用官方安装脚本安装 opencode，可稳定产出可执行二进制
+# 使用 npm 全局安装 opencode-ai，版本由 workflow 传入
 RUN bash -lc ' \
     set -euo pipefail; \
-    if [ "${OPENCODE_VERSION}" = "latest" ]; then \
-        curl -fsSL https://opencode.ai/install | bash -s -- --no-modify-path; \
-    else \
-        curl -fsSL https://opencode.ai/install | bash -s -- --version "${OPENCODE_VERSION}" --no-modify-path; \
-    fi; \
-    test -x /home/devuser/.opencode/bin/opencode \
+    npm install -g --prefix /home/devuser/.local/npm-global "opencode-ai@${OPENCODE_VERSION}"; \
+    test -x /home/devuser/.local/npm-global/bin/opencode; \
+    command -v opencode >/dev/null; \
+    opencode --version >/dev/null \
 '
 
 USER root
