@@ -6,7 +6,7 @@
 
 ## 功能概览
 
-- 基于 `ubuntu:24.04`，内置 `git`、`ssh`、`ffmpeg`、`uv`、`qlty`、`Rust`、`Bun`。
+- 基于 `ubuntu:24.04`，内置 `git`、`ssh`、`ffmpeg`、`uv`、`qlty`、`Rust`、`Bun`、`Docker CLI`。
 - 统一使用 `vfox` 管理 Java / Node.js，方便容器内构建多语言项目。
 - 使用 `devuser` 运行服务，支持 `PUID` / `PGID` 动态映射宿主机权限。
 - 默认启动命令：
@@ -47,7 +47,7 @@ docker build --build-arg OPENCODE_VERSION=1.2.27 -t opencode-docker:1.2.27 .
 构建完成后，可快速验证关键工具是否已就绪：
 
 ```bash
-docker run --rm opencode-docker:local bash -lc "bun --version && opencode --version && openspec --version"
+docker run --rm opencode-docker:local bash -lc "docker --version && bun --version && opencode --version && openspec --version"
 ```
 
 ## 本地运行
@@ -70,6 +70,31 @@ docker run --rm -p 4096:4096 \
 - `http://127.0.0.1:4096/doc`
 
 如果设置了 `OPENCODE_SERVER_PASSWORD`，需要使用 HTTP Basic Auth 访问。
+
+## 在容器内控制宿主机 Docker
+
+镜像已包含 `docker` CLI。只要在运行时挂载 `/var/run/docker.sock`，entrypoint 会根据 socket 的实际 GID 自动为 `devuser` 补充对应组权限，因此 `devuser` 可直接访问宿主机 Docker daemon。
+
+最小示例：
+
+```bash
+docker run --rm -p 4096:4096 \
+  -e OPENCODE_SERVER_USERNAME=admin \
+  -e OPENCODE_SERVER_PASSWORD=change-me \
+  -e TZ=Asia/Shanghai \
+  -v ${PWD}/workspace:/workspace \
+  -v ${PWD}/opencode-config:/home/devuser/.config/opencode \
+  -v ${PWD}/opencode-data:/home/devuser/.local/share/opencode \
+  -v ${PWD}/version-fox:/home/devuser/.version-fox \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  opencode-docker:local
+```
+
+如果使用 Compose，可直接参考 `examples/compose.docker-sock.yaml`。容器启动后可验证：
+
+```bash
+docker exec -it opencode-dev bash -lc "id && docker ps"
+```
 
 ## MCP 与共享 vfox
 
@@ -154,6 +179,7 @@ docker run --rm -p 4096:4096 \
 可直接参考：
 
 - [examples/compose.remote.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.remote.yaml)
+- [examples/compose.docker-sock.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.docker-sock.yaml)
 - [examples/nginx.opencode.conf](D:/Projects/ZedProjects/opencode-docker/examples/nginx.opencode.conf)
 - [nginx.conf](D:/Projects/ZedProjects/opencode-docker/nginx.conf)
 

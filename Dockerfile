@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     dos2unix \
+    docker.io \
     ffmpeg \
     git \
     gosu \
