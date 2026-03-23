@@ -260,7 +260,7 @@ proxy_send_timeout 3600s;
 - `push`：推送 `main` 且相关文件变更时，始终重建。
 - `workflow_dispatch`：支持手动触发构建；即使同版本镜像已存在，也会按当前最新 Release 重新构建。
 
-说明：GitHub Release tag 可能带 `v` 前缀（如 `v1.3.0`），工作流会保留该 tag 作为镜像标签，同时自动去掉前缀后再传给 `npm i -g opencode-ai@<version>`。在真正构建前，workflow 还会先校验 npm 上已发布对应的 `opencode-ai` 版本；若 npm 尚未同步该版本，则本次运行会直接失败，不会继续推镜像。
+说明：GitHub Release tag 可能带 `v` 前缀（如 `v1.3.0`），工作流会保留该 tag 作为镜像标签，同时自动去掉前缀后再传给 `npm i -g opencode-ai@<version>`。在真正构建前，workflow 还会先校验 npm 上已发布对应的 `opencode-ai` 版本；若 npm 尚未同步该版本，则本次运行会直接失败，不会继续推镜像。对于真正要重建的场景，workflow 会先删除 GHCR 中当前 `release-tag` 和 `latest` 对应的 package version，再重新构建并推送，尽量减少手动重建后残留无 tag 版本的情况。
 
 ## 参考
 

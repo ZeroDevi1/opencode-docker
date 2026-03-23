@@ -35,7 +35,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          owner_type="$(jq -r '.repository.owner.type' "$GITHUB_EVENT_PATH")"
+          if [ "${owner_type}" = "Organization" ]; then
+            package_api_base="orgs/${GITHUB_REPOSITORY_OWNER}"
+          else
+            package_api_base="users/${GITHUB_REPOSITORY_OWNER}"
+          fi
           echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          echo "package_api_base=${package_api_base}" >> "$GITHUB_OUTPUT"
 
       - name: Resolve upstream opencode ref
         id: ref
@@ -110,6 +117,88 @@ jobs:
             echo "Resolved npm package version ${resolved_npm_version} does not match expected ${expected_version}" >&2
             exit 1
           fi
+
+      - name: Delete existing GHCR tags before rebuild
+        if: github.event_name != 'schedule' || steps.exists.outputs.exists != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_API_URL: https://api.github.com
+          PACKAGE_API_BASE: ${{ steps.owner.outputs.package_api_base }}
+          PACKAGE_NAME: opencode-docker
+          RELEASE_TAG: ${{ steps.ref.outputs.opencode_release_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tags_json="$(printf '%s\n' "${RELEASE_TAG}" latest | jq -R . | jq -s .)"
+          page=1
+
+          while :; do
+            response_file="$(mktemp)"
+            http_code="$(curl --silent --show-error --location \
+              --output "${response_file}" \
+              --write-out '%{http_code}' \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "${GITHUB_API_URL}/${PACKAGE_API_BASE}/packages/container/${PACKAGE_NAME}/versions?per_page=100&page=${page}")"
+
+            if [ "${http_code}" = '404' ]; then
+              echo "Package ${PACKAGE_NAME} not found in GHCR, skip pre-build deletion"
+              rm -f "${response_file}"
+              break
+            fi
+            if [ "${http_code}" != '200' ]; then
+              cat "${response_file}" >&2
+              rm -f "${response_file}"
+              echo "Failed to list GHCR package versions, HTTP ${http_code}" >&2
+              exit 1
+            fi
+
+            versions="$(cat "${response_file}")"
+            rm -f "${response_file}"
+
+            count="$(jq 'length' <<<"${versions}")"
+            if [ "${count}" -eq 0 ]; then
+              break
+            fi
+
+            mapfile -t matched_versions < <(
+              jq -rc --argjson targets "${tags_json}" '
+                .[]
+                | select(((.metadata.container.tags // []) | any(. as $tag | $targets | index($tag))))
+                | {id, tags: (.metadata.container.tags // [])}
+              ' <<<"${versions}"
+            )
+
+            for version in "${matched_versions[@]}"; do
+              version_id="$(jq -r '.id' <<<"${version}")"
+              version_tags="$(jq -c '.tags' <<<"${version}")"
+              echo "Deleting GHCR package version ${version_id} with tags ${version_tags}"
+              response_file="$(mktemp)"
+              http_code="$(curl --silent --show-error --location \
+                --output "${response_file}" \
+                --write-out '%{http_code}' \
+                -X DELETE \
+                -H 'Accept: application/vnd.github+json' \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                "${GITHUB_API_URL}/${PACKAGE_API_BASE}/packages/container/${PACKAGE_NAME}/versions/${version_id}")"
+              if [ "${http_code}" != '204' ]; then
+                cat "${response_file}" >&2
+                rm -f "${response_file}"
+                echo "Failed to delete GHCR package version ${version_id}, HTTP ${http_code}" >&2
+                exit 1
+              fi
+              rm -f "${response_file}"
+            done
+
+            if [ "${count}" -lt 100 ]; then
+              break
+            fi
+
+            page=$((page + 1))
+          done
 
       - name: Build & Push
         if: github.event_name != 'schedule' || steps.exists.outputs.exists != 'true'
