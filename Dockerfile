@@ -100,16 +100,23 @@ RUN bash -lc " \
     npm install -g ace-tool @upstash/context7-mcp @fission-ai/openspec@latest \
 "
 
-# 使用 npm 全局安装 opencode-ai，版本由 workflow 传入
+# 使用 npm 全局安装 opencode-ai 与 cc-connect，避免共享 vfox 卷覆盖 CLI
 RUN bash -lc ' \
     set -euo pipefail; \
-    npm install -g --prefix /home/devuser/.local/npm-global "opencode-ai@${OPENCODE_VERSION}"; \
+    npm install -g --prefix /home/devuser/.local/npm-global "opencode-ai@${OPENCODE_VERSION}" "cc-connect@beta"; \
     test -x /home/devuser/.local/npm-global/bin/opencode; \
+    test -x /home/devuser/.local/npm-global/bin/cc-connect; \
     command -v opencode >/dev/null; \
-    opencode --version >/dev/null \
+    command -v cc-connect >/dev/null; \
+    opencode --version >/dev/null; \
+    cc-connect --version >/dev/null \
 '
 
 USER root
+
+RUN mkdir -p /usr/local/share/cc-connect
+COPY examples/cc-connect.config.toml /usr/local/share/cc-connect/config.toml
+RUN chmod 0644 /usr/local/share/cc-connect/config.toml
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN dos2unix /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh

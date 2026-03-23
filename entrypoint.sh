@@ -99,6 +99,131 @@ bootstrap_vfox_node() {
     "
 }
 
+init_cc_connect_config() {
+    local template="/usr/local/share/cc-connect/config.toml"
+    local target="/home/devuser/.cc-connect/config.toml"
+
+    ensure_owned_dir /home/devuser/.cc-connect
+
+    if [ ! -f "$target" ] && [ -f "$template" ]; then
+        echo "Initializing cc-connect config from template..."
+        cp "$template" "$target"
+    fi
+
+    if [ -f "$target" ]; then
+        chown devuser:devgroup "$target" || true
+        chmod 600 "$target" || true
+    fi
+}
+
+ensure_default_workspace_project() {
+    if [ -d "/workspace" ]; then
+        mkdir -p /workspace/weixin
+        chown devuser:devgroup /workspace/weixin || true
+    fi
+}
+
+is_opencode_server_command() {
+    [ "$#" -ge 2 ] && [ "$1" = "opencode" ] && [ "$2" = "serve" ]
+}
+
+cc_connect_config_has_token() {
+    local config_path="/home/devuser/.cc-connect/config.toml"
+
+    python3 - "$config_path" <<'PY'
+import sys
+import tomllib
+
+path = sys.argv[1]
+
+try:
+    with open(path, "rb") as fh:
+        data = tomllib.load(fh)
+except Exception:
+    raise SystemExit(1)
+
+for project in data.get("projects", []):
+    for platform in project.get("platforms", []):
+        if platform.get("type") != "weixin":
+            continue
+        options = platform.get("options") or {}
+        token = (options.get("token") or "").strip()
+        if token:
+            raise SystemExit(0)
+
+raise SystemExit(1)
+PY
+}
+
+print_cc_connect_setup_hint() {
+    echo "cc-connect is configured but no Weixin token was found in /home/devuser/.cc-connect/config.toml."
+    echo "Start the container first, then run the following command inside the container to complete QR login:"
+    echo "  cc-connect weixin setup --project weixin"
+    echo "After QR login completes, restart the container to auto-start cc-connect."
+}
+
+run_with_optional_cc_connect() {
+    local opencode_pid=""
+    local cc_connect_pid=""
+    local exit_status=0
+
+    if ! is_opencode_server_command "$@"; then
+        exec gosu devuser bash -lc 'exec "$@"' -- "$@"
+    fi
+
+    if ! cc_connect_config_has_token; then
+        print_cc_connect_setup_hint
+        exec gosu devuser bash -lc 'exec "$@"' -- "$@"
+    fi
+
+    terminate_children() {
+        if [ -n "$opencode_pid" ] && kill -0 "$opencode_pid" 2>/dev/null; then
+            kill "$opencode_pid" 2>/dev/null || true
+        fi
+        if [ -n "$cc_connect_pid" ] && kill -0 "$cc_connect_pid" 2>/dev/null; then
+            kill "$cc_connect_pid" 2>/dev/null || true
+        fi
+    }
+
+    handle_signal() {
+        terminate_children
+        wait "$opencode_pid" 2>/dev/null || true
+        wait "$cc_connect_pid" 2>/dev/null || true
+        exit 143
+    }
+
+    trap handle_signal INT TERM
+
+    echo "Starting opencode server..."
+    gosu devuser bash -lc 'exec "$@"' -- "$@" &
+    opencode_pid=$!
+
+    echo "Starting cc-connect..."
+    gosu devuser bash -lc '
+        cc-connect -config /home/devuser/.cc-connect/config.toml
+        status=$?
+        if [ "$status" -ne 0 ]; then
+            echo "cc-connect exited with status ${status}. OpenCode will keep running; fix the Weixin side and restart the container when ready."
+        fi
+        exit "$status"
+    ' &
+    cc_connect_pid=$!
+
+    set +e
+    wait "$opencode_pid"
+    exit_status=$?
+    set -e
+
+    echo "opencode server exited, stopping companion processes..."
+
+    terminate_children
+    wait "$opencode_pid" 2>/dev/null || true
+    wait "$cc_connect_pid" 2>/dev/null || true
+    trap - INT TERM
+
+    return "$exit_status"
+}
+
 if [ -d "/home/devuser/.ssh" ]; then
     echo "Securing mounted SSH keys..."
 
@@ -131,6 +256,7 @@ fi
 # OpenCode 默认使用 XDG 目录，这里确保配置和数据目录可持久化
 ensure_owned_dir /home/devuser/.config
 ensure_owned_dir /home/devuser/.config/opencode
+ensure_owned_dir /home/devuser/.cc-connect
 ensure_owned_dir /home/devuser/.local
 ensure_owned_dir /home/devuser/.local/share
 ensure_owned_dir /home/devuser/.local/share/opencode
@@ -143,6 +269,8 @@ chown -h devuser:devgroup /home/devuser/.vfox 2>/dev/null || true
 ensure_docker_socket_access
 
 bootstrap_vfox_node
+init_cc_connect_config
+ensure_default_workspace_project
 
 echo "Starting application..."
-exec gosu devuser bash -lc 'exec "$@"' -- "$@"
+run_with_optional_cc_connect "$@"

@@ -1,0 +1,26 @@
+language = "zh"
+
+[log]
+level = "info"
+
+[[projects]]
+name = "weixin"
+
+[projects.agent]
+type = "opencode"
+
+[projects.agent.options]
+work_dir = "/workspace/weixin"
+mode = "yolo"
+model = "openai/gpt-5.4"
+
+[[projects.platforms]]
+type = "weixin"
+
+[projects.platforms.options]
+# 首次扫码后，cc-connect 会把真实 token / account_id / allow_from 写回此文件。
+# 建议把 allow_from 限制为你的微信用户 ID（例如 `xxx@im.wechat`），避免留空后权限边界不清。
+allow_from = ""
+token = ""
+base_url = "https://ilinkai.weixin.qq.com"
+account_id = ""

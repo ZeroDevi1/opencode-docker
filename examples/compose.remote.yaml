@@ -30,6 +30,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./workspace:/workspace
+      - ./cc-connect:/home/devuser/.cc-connect
       - ./opencode-config:/home/devuser/.config/opencode
       - ./opencode-data:/home/devuser/.local/share/opencode
       - ./version-fox:/home/devuser/.version-fox
@@ -41,12 +42,6 @@ services:
       - PUID=1000
       - PGID=10
       - TZ=Asia/Shanghai
-    command: >
-      sh -c '
-        exec opencode serve \
-          --hostname 0.0.0.0 \
-          --port 4096
-      '
 
   nginx:
     image: nginx:alpine

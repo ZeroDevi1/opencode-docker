@@ -3,7 +3,7 @@ version: "3.8"
 services:
   opencode:
     image: ghcr.io/<owner>/opencode-docker:latest
-    container_name: opencode-dev
+    container_name: opencode-weixin
     restart: unless-stopped
     ports:
       - "4096:4096"
@@ -17,7 +17,7 @@ services:
       - ./ssh_keys/.gitconfig:/home/devuser/.gitconfig
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - OPENCODE_SERVER_USERNAME=change-me
+      - OPENCODE_SERVER_USERNAME=admin
       - OPENCODE_SERVER_PASSWORD=change-me
       - PUID=1000
       - PGID=1000
