@@ -22,6 +22,31 @@ ensure_owned_dir() {
     chown -R devuser:devgroup "$target"
 }
 
+ensure_docker_socket_access() {
+    local docker_socket="/var/run/docker.sock"
+    local socket_gid=""
+    local socket_group=""
+
+    if [ ! -S "$docker_socket" ]; then
+        return 0
+    fi
+
+    socket_gid="$(stat -c '%g' "$docker_socket")"
+    socket_group="$(getent group "$socket_gid" | cut -d: -f1 || true)"
+
+    if [ -z "$socket_group" ]; then
+        socket_group="dockersock"
+        if getent group "$socket_group" >/dev/null 2>&1; then
+            groupmod -o -g "$socket_gid" "$socket_group" || true
+        else
+            groupadd -o -g "$socket_gid" "$socket_group" || true
+        fi
+    fi
+
+    echo "Granting devuser access to ${docker_socket} via group ${socket_group} (${socket_gid})..."
+    usermod -aG "$socket_group" devuser || true
+}
+
 with_vfox_bootstrap_lock() {
     local lock_dir="/tmp/vfox-bootstrap.lock"
     local wait_seconds=0
@@ -114,6 +139,8 @@ if [ ! -e /home/devuser/.vfox ]; then
     ln -s /home/devuser/.version-fox /home/devuser/.vfox
 fi
 chown -h devuser:devgroup /home/devuser/.vfox 2>/dev/null || true
+
+ensure_docker_socket_access
 
 bootstrap_vfox_node
 
