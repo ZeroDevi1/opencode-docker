@@ -75,7 +75,8 @@ RUN curl -fsSL https://bun.com/install | bash && test -x /home/devuser/.bun/bin/
 ENV PATH="/home/devuser/.bun/bin:${PATH}"
 ENV PATH="/home/devuser/.local/npm-global/bin:${PATH}"
 
-RUN echo 'eval "$(vfox activate bash)"' >> /home/devuser/.bashrc \
+RUN echo 'export PATH="/home/devuser/.local/npm-global/bin:$PATH"' >> /home/devuser/.profile \
+    && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.bashrc \
     && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.profile \
     && printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' | cat - /home/devuser/.bashrc > /home/devuser/.bashrc.tmp \
     && mv /home/devuser/.bashrc.tmp /home/devuser/.bashrc \

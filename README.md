@@ -16,7 +16,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 ```
 
 - 适合与现有 Codex 远程栈并行部署，共享 `workspace`、`.version-fox`、`.ssh`、`.gitconfig`，但分离 OpenCode 自身配置与会话数据。
-- 镜像内的 OpenCode 在构建阶段通过 `npm i -g opencode-ai` 安装到独立目录 `/home/devuser/.local/npm-global/bin`，不会被共享的 `./version-fox` 挂载覆盖，运行时可直接执行 `opencode`。
+- 镜像内的 OpenCode 在构建阶段通过 `npm i -g opencode-ai` 安装到独立目录 `/home/devuser/.local/npm-global/bin`，不会被共享的 `./version-fox` 挂载覆盖；同时会写入 `devuser` 的登录 shell PATH，便于 `su - devuser` 后直接执行 `opencode`，而 `docker exec -u devuser ...` 则继续复用镜像级 `PATH`。
 - Node.js、`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
 
 ## 本地构建
