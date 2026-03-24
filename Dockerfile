@@ -7,6 +7,8 @@ ENV OPENCODE_VERSION=${OPENCODE_VERSION}
 ENV VFOX_NODE_VERSION=22.14.0
 ENV VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp @fission-ai/openspec@latest"
 ENV VFOX_HOME=/home/devuser/.version-fox
+ENV DEVUSER_NPM_GLOBAL_PREFIX=/home/devuser/.local/npm-global
+ENV DEVUSER_NPM_GLOBAL_BIN=/home/devuser/.local/npm-global/bin
 
 # 使用国内镜像源以提升构建稳定性
 RUN sed -i 's/archive.ubuntu.com/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/ubuntu.sources \
@@ -43,7 +45,7 @@ RUN set -eux; \
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \
-    printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' 'eval "$(vfox activate bash)"' > /etc/profile.d/vfox.sh; \
+    printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' 'export PATH="/home/devuser/.local/npm-global/bin:$PATH"' 'eval "$(vfox activate bash)"' > /etc/profile.d/vfox.sh; \
     chmod 0644 /etc/profile.d/vfox.sh
 
 # 预创建标准开发用户，便于与宿主机 UID/GID 对齐
@@ -73,9 +75,10 @@ RUN curl -fsSL https://qlty.sh | sh
 ENV PATH="/home/devuser/.qlty/bin:${PATH}"
 RUN curl -fsSL https://bun.com/install | bash && test -x /home/devuser/.bun/bin/bun
 ENV PATH="/home/devuser/.bun/bin:${PATH}"
-ENV PATH="/home/devuser/.local/npm-global/bin:${PATH}"
+ENV PATH="${PATH}:${DEVUSER_NPM_GLOBAL_BIN}"
 
-RUN echo 'export PATH="/home/devuser/.local/npm-global/bin:$PATH"' >> /home/devuser/.profile \
+RUN echo 'export PATH="/home/devuser/.local/npm-global/bin:$PATH"' >> /home/devuser/.bashrc \
+    && echo 'export PATH="/home/devuser/.local/npm-global/bin:$PATH"' >> /home/devuser/.profile \
     && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.bashrc \
     && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.profile \
     && printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' | cat - /home/devuser/.bashrc > /home/devuser/.bashrc.tmp \
@@ -103,9 +106,10 @@ RUN bash -lc " \
 # 使用 npm 全局安装 opencode-ai 与 cc-connect，避免共享 vfox 卷覆盖 CLI
 RUN bash -lc ' \
     set -euo pipefail; \
-    npm install -g --prefix /home/devuser/.local/npm-global "opencode-ai@${OPENCODE_VERSION}" "cc-connect@beta"; \
-    test -x /home/devuser/.local/npm-global/bin/opencode; \
-    test -x /home/devuser/.local/npm-global/bin/cc-connect; \
+    npm install -g --prefix "${DEVUSER_NPM_GLOBAL_PREFIX}" "opencode-ai@${OPENCODE_VERSION}" "cc-connect@beta"; \
+    test -x "${DEVUSER_NPM_GLOBAL_BIN}/opencode"; \
+    test -x "${DEVUSER_NPM_GLOBAL_BIN}/cc-connect"; \
+    export PATH="${DEVUSER_NPM_GLOBAL_BIN}:$PATH"; \
     command -v opencode >/dev/null; \
     command -v cc-connect >/dev/null; \
     opencode --version >/dev/null; \
@@ -117,6 +121,12 @@ USER root
 RUN mkdir -p /usr/local/share/cc-connect
 COPY examples/cc-connect.config.toml /usr/local/share/cc-connect/config.toml
 RUN chmod 0644 /usr/local/share/cc-connect/config.toml
+
+COPY devuser-cli-wrapper.sh /usr/local/bin/devuser-cli-wrapper.sh
+RUN dos2unix /usr/local/bin/devuser-cli-wrapper.sh \
+    && chmod +x /usr/local/bin/devuser-cli-wrapper.sh \
+    && ln -sf /usr/local/bin/devuser-cli-wrapper.sh /usr/local/bin/opencode \
+    && ln -sf /usr/local/bin/devuser-cli-wrapper.sh /usr/local/bin/cc-connect
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN dos2unix /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh

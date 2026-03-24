@@ -17,7 +17,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 
 - 若 `/home/devuser/.cc-connect/config.toml` 已写入真实微信 `token`，entrypoint 会额外自动启动 `cc-connect -config /home/devuser/.cc-connect/config.toml`。
 - 适合与现有 Codex 远程栈并行部署，共享 `workspace`、`.version-fox`、`.ssh`、`.gitconfig`，但分离 OpenCode 自身配置与会话数据。
-- 镜像内的 OpenCode 与 `cc-connect@beta` 会在构建阶段安装到独立目录 `/home/devuser/.local/npm-global/bin`，不会被共享的 `./version-fox` 挂载覆盖；同时会写入 `devuser` 的登录 shell PATH，便于 `su - devuser` 后直接执行 `opencode` 与 `cc-connect`，而 `docker exec -u devuser ...` 则继续复用镜像级 `PATH`。
+- 镜像内的 OpenCode 与 `cc-connect@beta` 会在构建阶段安装到独立目录 `/home/devuser/.local/npm-global/bin`，不会被共享的 `./version-fox` 挂载覆盖；同时镜像会提供 `/usr/local/bin/opencode`、`/usr/local/bin/cc-connect` 包装入口，并补齐 `devuser` 的 `.bashrc` / `.profile` PATH，因此 `root`、`su devuser`、`su - devuser`、`docker exec -u devuser ...` 都能直接执行这两个命令。
 - Node.js、`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
 - 容器首次启动会自动初始化 `/home/devuser/.cc-connect/config.toml` 模板，并确保默认工作区 `/workspace/weixin` 存在。
 
@@ -51,6 +51,12 @@ docker build --build-arg OPENCODE_VERSION=1.2.27 -t opencode-docker:1.2.27 .
 
 ```bash
 docker run --rm opencode-docker:local bash -lc "docker --version && bun --version && opencode --version && cc-connect --version && openspec --version"
+```
+
+如果你想额外确认 `root` 和非登录 `devuser` shell 的 PATH 都正常，可再执行：
+
+```bash
+docker run --rm --entrypoint bash opencode-docker:local -lc "cc-connect --version && su devuser -c 'cc-connect --version'"
 ```
 
 ## 本地运行
@@ -111,6 +117,7 @@ docker exec -it opencode-weixin bash -lc 'cc-connect weixin setup --project weix
 - 建议把 `./cc-connect/` 或至少 `./cc-connect/config.toml` 加入你自己的 `.gitignore`。
 - 如果尚未扫码，容器仍会正常启动 OpenCode，只是在日志中提示你执行 `cc-connect weixin setup --project weixin`。
 - 若希望自动双进程启动，请尽量使用镜像默认 `CMD`，不要再覆盖成自定义 `command:`。
+- 若你是在容器里临时切到 `root` 或执行 `su devuser`，现在也可以直接运行 `cc-connect`；镜像内包装脚本会自动补齐 `node` 与 npm CLI 所需的运行环境。
 
 ## 在容器内控制宿主机 Docker
 
