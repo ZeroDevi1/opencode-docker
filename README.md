@@ -123,7 +123,7 @@ docker exec -it opencode-weixin bash -lc 'cc-connect weixin setup --project weix
 - 建议把 `./cc-connect/` 或至少 `./cc-connect/config.toml` 加入你自己的 `.gitignore`。
 - 如果尚未扫码，容器仍会正常启动 OpenCode，只是在日志中提示你执行 `cc-connect weixin setup --project weixin`。
 - 若希望自动双进程启动，请尽量使用镜像默认 `CMD`，不要再覆盖成自定义 `command:`。
-- 若你是在容器里临时切到 `root` 或执行 `su devuser`，现在也可以直接运行 `opencode` / `cc-connect`；镜像内包装脚本会直接补齐 Node 运行时 PATH，而不是在非登录 shell 里再次 `eval "$(vfox activate bash)"`。
+- 若你是在容器里临时切到 `root` 或执行 `su devuser`，现在也可以直接运行 `opencode` / `cc-connect`；镜像会让 `/usr/local/bin` 中的包装入口优先于 npm-global 原始脚本，避免登录 shell 再次命中 `#!/usr/bin/env node` 的裸 npm 启动器。
 
 ## 在容器内控制宿主机 Docker
 

@@ -45,7 +45,7 @@ RUN set -eux; \
 
 RUN set -eux; \
     mkdir -p /etc/profile.d; \
-    printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' 'export PATH="/home/devuser/.local/npm-global/bin:$PATH"' 'eval "$(vfox activate bash)"' > /etc/profile.d/vfox.sh; \
+    printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' 'export PATH="$PATH:/home/devuser/.local/npm-global/bin"' 'eval "$(vfox activate bash)"' > /etc/profile.d/vfox.sh; \
     chmod 0644 /etc/profile.d/vfox.sh
 
 # 预创建标准开发用户，便于与宿主机 UID/GID 对齐
@@ -77,8 +77,8 @@ RUN curl -fsSL https://bun.com/install | bash && test -x /home/devuser/.bun/bin/
 ENV PATH="/home/devuser/.bun/bin:${PATH}"
 ENV PATH="${PATH}:${DEVUSER_NPM_GLOBAL_BIN}"
 
-RUN echo 'export PATH="/home/devuser/.local/npm-global/bin:$PATH"' >> /home/devuser/.bashrc \
-    && echo 'export PATH="/home/devuser/.local/npm-global/bin:$PATH"' >> /home/devuser/.profile \
+RUN echo 'export PATH="$PATH:/home/devuser/.local/npm-global/bin"' >> /home/devuser/.bashrc \
+    && echo 'export PATH="$PATH:/home/devuser/.local/npm-global/bin"' >> /home/devuser/.profile \
     && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.bashrc \
     && echo 'eval "$(vfox activate bash)"' >> /home/devuser/.profile \
     && printf '%s\n' 'export VFOX_HOME=/home/devuser/.version-fox' | cat - /home/devuser/.bashrc > /home/devuser/.bashrc.tmp \
