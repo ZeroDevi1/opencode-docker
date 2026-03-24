@@ -128,6 +128,10 @@ RUN dos2unix /usr/local/bin/devuser-cli-wrapper.sh \
     && ln -sf /usr/local/bin/devuser-cli-wrapper.sh /usr/local/bin/opencode \
     && ln -sf /usr/local/bin/devuser-cli-wrapper.sh /usr/local/bin/cc-connect
 
+COPY opencode-attach-wrapper.sh /usr/local/bin/opencode-attach
+RUN dos2unix /usr/local/bin/opencode-attach \
+    && chmod +x /usr/local/bin/opencode-attach
+
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN dos2unix /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
 

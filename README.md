@@ -17,7 +17,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 
 - 若 `/home/devuser/.cc-connect/config.toml` 已写入真实微信 `token`，entrypoint 会额外自动启动 `cc-connect -config /home/devuser/.cc-connect/config.toml`。
 - 适合与现有 Codex 远程栈并行部署，共享 `workspace`、`.version-fox`、`.ssh`、`.gitconfig`，但分离 OpenCode 自身配置与会话数据。
-- 镜像内的 OpenCode 与 `cc-connect@beta` 会在构建阶段安装到独立目录 `/home/devuser/.local/npm-global/bin`，不会被共享的 `./version-fox` 挂载覆盖；同时镜像会提供 `/usr/local/bin/opencode`、`/usr/local/bin/cc-connect` 包装入口，并补齐 `devuser` 的 `.bashrc` / `.profile` PATH，因此 `root`、`su devuser`、`su - devuser`、`docker exec -u devuser ...` 都能直接执行这两个命令。
+- 镜像内的 OpenCode 与 `cc-connect@beta` 会在构建阶段安装到独立目录 `/home/devuser/.local/npm-global/bin`，不会被共享的 `./version-fox` 挂载覆盖；同时镜像会提供 `/usr/local/bin/opencode`、`/usr/local/bin/cc-connect` 包装入口，并补齐 `devuser` 的 `.bashrc` / `.profile` PATH，因此 `root`、`su devuser`、`su - devuser`、`docker exec -u devuser ...` 都能直接执行这两个命令。微信模板里的 `cc-connect` 还会通过 `/usr/local/bin/opencode-attach` 调用本机 `opencode serve`，避免直接走本地 `opencode run` 的会话恢复缺陷。
 - Node.js、`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
 - 容器首次启动会自动初始化 `/home/devuser/.cc-connect/config.toml` 模板，并确保默认工作区 `/workspace/weixin` 存在。
 
@@ -113,7 +113,7 @@ docker exec -it opencode-weixin bash -lc 'cc-connect weixin setup --project weix
 
 3. 用手机微信扫码并确认
 4. 检查 `/home/devuser/.cc-connect/config.toml` 已被回写真实 `token`、`account_id`、`allow_from`
-5. 重启容器，entrypoint 就会在启动 `opencode serve` 的同时自动拉起 `cc-connect`
+5. 重启容器，entrypoint 就会在启动 `opencode serve` 的同时自动拉起 `cc-connect`；模板中的 `cmd = "/usr/local/bin/opencode-attach"` 会让 `cc-connect` 通过 `--attach http://127.0.0.1:4096` 复用这个服务
 
 说明：
 
