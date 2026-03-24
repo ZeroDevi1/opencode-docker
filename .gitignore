@@ -1,2 +1,11 @@
 .ace-tool/
 .worktrees/
+.env
+workspace/
+cc-connect/
+opencode-config/
+opencode-data/
+version-fox/
+ssh_keys/
+letsencrypt/
+nginx-log/

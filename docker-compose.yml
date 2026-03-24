@@ -1,0 +1,81 @@
+services:
+  opencode:
+    image: ghcr.io/zerodevi1/opencode-docker:latest
+    container_name: opencode-dev
+    restart: unless-stopped
+    volumes:
+      - ./workspace:/workspace
+      - ./cc-connect:/home/devuser/.cc-connect
+      - ./opencode-config:/home/devuser/.config/opencode
+      - ./opencode-data:/home/devuser/.local/share/opencode
+      - ./version-fox:/home/devuser/.version-fox
+      - ./ssh_keys:/home/devuser/.ssh
+      - ./ssh_keys/.gitconfig:/home/devuser/.gitconfig
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    environment:
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD}
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
+      DOCKER_HOST: unix:///var/run/docker.sock
+
+  nginx:
+    image: nginx:alpine
+    container_name: opencode-nginx
+    restart: unless-stopped
+    ports:
+      - "4395:4395"
+      - "4396:4396"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./nginx-log:/var/log/nginx
+    depends_on:
+      - opencode
+      - acme
+
+  acme:
+    image: neilpang/acme.sh:latest
+    container_name: opencode-acme
+    restart: unless-stopped
+    volumes:
+      - ./letsencrypt:/acme.sh
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      Ali_Key: ${ALI_KEY}
+      Ali_Secret: ${ALI_SECRET}
+      TARGET_DOMAIN: example.com
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        set -eu
+        apk add --no-cache docker-cli
+
+        issue_cert() {
+          domain="$1"
+          if [ -z "$domain" ]; then
+            return 0
+          fi
+
+          if [ ! -f "/acme.sh/${domain}.pem" ]; then
+            echo "[Init] 为 ${domain} 申请证书..."
+            /usr/local/bin/acme.sh --issue --dns dns_ali -d "${domain}" --server letsencrypt
+
+            echo "[Init] 安装 ${domain} 证书并配置 Nginx 重载钩子..."
+            /usr/local/bin/acme.sh --install-cert -d "${domain}" \
+              --key-file       /acme.sh/${domain}.key \
+              --fullchain-file /acme.sh/${domain}.pem \
+              --reloadcmd      "docker exec opencode-nginx nginx -s reload"
+          else
+            echo "[Init] ${domain} 证书已存在，跳过首次签发。"
+          fi
+        }
+
+        issue_cert "$${TARGET_DOMAIN}"
+
+        echo "[Init] 启动 cron 守护进程..."
+        exec crond -f

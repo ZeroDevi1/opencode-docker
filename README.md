@@ -193,21 +193,16 @@ docker exec -it opencode-dev bash -lc "id && docker ps"
 
 ## 远程部署建议
 
-推荐把 OpenCode 作为现有 `codex + nginx + acme` 栈中的一个额外服务加入。
+当前仓库根目录提供的正式远程部署配置，是仅包含 `opencode`、`nginx`、`acme` 的独立三服务方案。
 
-如果你的远程环境和当前现网一样，不能给 OpenCode 单独占用宿主机 `80/443`，推荐使用“同域名 + 独立端口”模式：
+当前固定域名为 `example.com`，推荐使用“同域名 + 独立端口”模式：
 
-- Codex：
-  - `http://example.com:5000`
-  - `https://example.com:5001`
-- OpenCode：
-  - `http://example.com:4395`
-  - `https://example.com:4396`
+- `http://example.com:4395`
+- `https://example.com:4396`
 
-这里有一个关键点：不能只在 Docker 里把 `4395:80`、`4396:443` 映射出去，因为这样请求进入 Nginx 后仍然只会落到容器内的 `80/443`，Nginx 无法按“外部端口”区分 Codex 和 OpenCode。正确做法是：
+这里有一个关键点：不能只在 Docker 里把 `4395:80`、`4396:443` 映射出去，因为这样请求进入 Nginx 后仍然只会落到容器内的 `80/443`。当前正式配置的做法是：
 
-- Codex 在 Nginx 容器内继续监听 `80/443`
-- OpenCode 在 Nginx 容器内额外监听 `4395/4396`
+- Nginx 容器内直接监听 `4395/4396`
 - 宿主机端口一一映射到容器内同名端口
 
 这不会和 OpenCode 服务本身冲突，因为：
@@ -234,6 +229,9 @@ docker exec -it opencode-dev bash -lc "id && docker ps"
 
 可直接参考：
 
+- [docker-compose.yml](docker-compose.yml)
+- [.env.example](.env.example)
+- [docs/remote-deploy.md](docs/remote-deploy.md)
 - [examples/compose.remote.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.remote.yaml)
 - [examples/compose.docker-sock.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.docker-sock.yaml)
 - [examples/compose.weixin.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.weixin.yaml)
@@ -242,7 +240,7 @@ docker exec -it opencode-dev bash -lc "id && docker ps"
 
 ## Compose 合并要点
 
-`opencode` 服务建议如下：
+当前仓库根目录的 `docker-compose.yml` 已是可直接使用的正式配置，敏感值通过 `.env` 提供。`opencode` 服务核心配置如下：
 
 ```yaml
   opencode:
@@ -258,31 +256,28 @@ docker exec -it opencode-dev bash -lc "id && docker ps"
       - ./ssh_keys:/home/devuser/.ssh
       - ./ssh_keys/.gitconfig:/home/devuser/.gitconfig
     environment:
-      - OPENCODE_SERVER_USERNAME=admin
-      - OPENCODE_SERVER_PASSWORD=change-me
-      - PUID=1000
-      - PGID=1000
-      - TZ=Asia/Shanghai
+      OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME}
+      OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD}
+      PUID: ${PUID}
+      PGID: ${PGID}
+      TZ: ${TZ}
 ```
 
 这里建议直接使用镜像默认 `CMD`，这样 entrypoint 才能在检测到微信 token 后自动同时拉起 `opencode serve` 与 `cc-connect`。
 
-如果走“同域名 + 独立端口”模式，Nginx 需要同时监听这四个端口：
+当前正式方案下，Nginx 只需要监听这两个端口：
 
 ```yaml
 ports:
-  - "5000:80"
-  - "5001:443"
   - "4395:4395"
   - "4396:4396"
 ```
 
 对应的 Nginx 路由关系是：
 
-- `80/443 -> codex:5000`
 - `4395/4396 -> opencode:4096`
 
-HTTPS 证书可以直接复用 `example.com` 的同一套证书文件。为保证服务端推送、事件流和未来扩展稳定，建议至少带上这些代理头：
+HTTPS 证书由 ACME 为 `example.com` 直接申请并续期。为保证服务端推送、事件流和未来扩展稳定，建议至少带上这些代理头：
 
 ```nginx
 proxy_http_version 1.1;
@@ -296,7 +291,7 @@ proxy_read_timeout 3600s;
 proxy_send_timeout 3600s;
 ```
 
-如果 Codex 和 OpenCode 共用同一个域名，ACME 容器只需要维护一套 `TARGET_DOMAIN=example.com` 证书即可，不需要再额外申请 `OPENCODE_DOMAIN`。
+当前正式配置固定为 `example.com`，ACME 直接为该域名申请并续期证书。若需要 Codex 共栈部署，请另行参考 `examples/compose.remote.yaml`。
 
 ## GHCR 自动构建
 
