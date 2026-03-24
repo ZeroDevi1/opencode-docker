@@ -21,6 +21,12 @@ trap cleanup EXIT
 
 mkdir -p "${fake_bin}" "${target_dir}"
 
+cat > "${fake_bin}/date" <<'EOF'
+#!/bin/bash
+printf '2026-03-24 12:14:43 CST\n'
+EOF
+chmod +x "${fake_bin}/date"
+
 cat > "${target_path}" <<EOF
 #!/bin/bash
 printf '%s\n' "\$*" > "${args_log}"
@@ -48,6 +54,7 @@ for expected_fragment in \
     'run ' \
     '--attach http://127.0.0.1:4096' \
     '--password secret-pass' \
+    '--title New session - 2026-03-24 12:14:43 CST' \
     '--dir /workspace/weixin' \
     'hello'; do
     case "${logged_args}" in
@@ -80,7 +87,30 @@ PATH="${fake_bin}:/usr/bin:/bin" \
 
 logged_args="$(<"${args_log}")"
 
-if [ "${logged_args}" != 'run --attach http://example.test:9999 --password explicit-pass hello' ]; then
-    printf 'explicit attach/password should pass through unchanged: %s\n' "${logged_args}" >&2
+for expected_fragment in \
+    'run ' \
+    '--attach http://example.test:9999' \
+    '--password explicit-pass' \
+    '--title New session - 2026-03-24 12:14:43 CST' \
+    'hello'; do
+    case "${logged_args}" in
+        *"${expected_fragment}"*) ;;
+        *)
+            printf 'missing explicit attach/password fragment %s in args: %s\n' "${expected_fragment}" "${logged_args}" >&2
+            exit 1
+            ;;
+    esac
+done
+
+OPENCODE_SERVER_PASSWORD='secret-pass' \
+DEVUSER_CLI_HOME="${fake_home}" \
+DEVUSER_CLI_CURRENT_UID=1000 \
+PATH="${fake_bin}:/usr/bin:/bin" \
+"${wrapper_path}" run --title explicit-title hello
+
+logged_args="$(<"${args_log}")"
+
+if [ "${logged_args}" != 'run --password secret-pass --attach http://127.0.0.1:4096 --title explicit-title hello' ]; then
+    printf 'explicit title should pass through unchanged: %s\n' "${logged_args}" >&2
     exit 1
 fi
