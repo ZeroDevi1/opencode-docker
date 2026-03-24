@@ -227,16 +227,20 @@ docker exec -it opencode-dev bash -lc "id && docker ps"
 - ./version-fox:/home/devuser/.version-fox
 ```
 
-可直接参考：
+正式入口：
 
 - [docker-compose.yml](docker-compose.yml)
 - [.env.example](.env.example)
 - [docs/remote-deploy.md](docs/remote-deploy.md)
-- [examples/compose.remote.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.remote.yaml)
-- [examples/compose.docker-sock.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.docker-sock.yaml)
-- [examples/compose.weixin.yaml](D:/Projects/ZedProjects/opencode-docker/examples/compose.weixin.yaml)
-- [examples/nginx.opencode.conf](D:/Projects/ZedProjects/opencode-docker/examples/nginx.opencode.conf)
-- [nginx.conf](D:/Projects/ZedProjects/opencode-docker/nginx.conf)
+- [nginx.conf](nginx.conf)
+
+历史参考与功能示例：
+
+- [examples/compose.remote.yaml](examples/compose.remote.yaml)：legacy 历史方案，仅供对照旧的 Codex/OpenCode 共栈远程部署，不推荐新部署直接使用
+- [examples/nginx.opencode.conf](examples/nginx.opencode.conf)：legacy 历史方案，仅供对照旧的子域名反代模板，不推荐新部署直接使用
+- [examples/cc-connect.config.toml](examples/cc-connect.config.toml)：模板示例 / 功能示例，用于初始化或参考 `/home/devuser/.cc-connect/config.toml`，不是仓库根目录正式远程部署入口
+- [examples/compose.docker-sock.yaml](examples/compose.docker-sock.yaml)：功能示例，展示最小 Docker Socket 运行方式
+- [examples/compose.weixin.yaml](examples/compose.weixin.yaml)：功能示例，展示微信 / `cc-connect` 接入方式
 
 ## Compose 合并要点
 

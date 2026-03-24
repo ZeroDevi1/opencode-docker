@@ -267,8 +267,6 @@ services:
 - 不建议把真实密码、阿里云密钥、SSH 私钥提交到 Git 仓库
 - 建议把 `workspace/`、`cc-connect/`、`opencode-config/`、`opencode-data/`、`version-fox/`、`ssh_keys/`、`letsencrypt/`、`nginx-log/` 视为运行时目录，不提交到仓库
 
-如果你还需要 Codex 共栈模式，可另外参考 `examples/compose.remote.yaml`；但仓库根目录当前正式配置只对应 OpenCode 独立部署。
-
 ## 8. 编写 `nginx.conf`
 
 仓库根目录已经提供对应的 `nginx.conf`，当前内容固定为 `example.com` 的独立 OpenCode 部署版。部署时可直接使用。
@@ -484,13 +482,20 @@ git config --global --list
 
 ## 13. 对应仓库文件
 
-本部署文档与以下文件相互对应：
+本部署文档与以下根目录正式远程部署方案对应文件相互对应：
 
 - `README.md`
-- `examples/compose.remote.yaml`
-- `examples/compose.docker-sock.yaml`
-- `examples/nginx.opencode.conf`
+- `docker-compose.yml`
+- `.env.example`
 - `nginx.conf`
 - `entrypoint.sh`
 
-如果你需要的是“Codex + OpenCode + Nginx + ACME”完整共栈方案，请参考 `examples/compose.remote.yaml`；仓库根目录当前提供的正式配置则是本文这套 OpenCode 独立部署方案。
+## 14. 历史参考与相关示例
+
+以下内容仅用于历史对照或特定功能示例，不属于本文正文所述的根目录正式三服务部署流程：
+
+- `examples/compose.remote.yaml`：Codex/OpenCode 共栈历史参考
+- `examples/nginx.opencode.conf`：旧的子域名反代模板
+- `examples/cc-connect.config.toml`：模板示例 / 功能示例，用于初始化或参考 `/home/devuser/.cc-connect/config.toml`，不是仓库根目录正式远程部署入口；正式远程部署仍优先参考根目录 `docker-compose.yml`、`.env.example`、`nginx.conf` 与本文
+- `examples/compose.docker-sock.yaml`：最小 Docker Socket 示例
+- `examples/compose.weixin.yaml`：微信接入示例

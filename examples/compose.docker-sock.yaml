@@ -1,3 +1,5 @@
+# 功能示例：这是最小 Docker Socket 挂载运行示例，用于展示宿主机 Docker 能力接入方式。
+# 它不是当前仓库根目录的正式远程部署入口，应优先参考根目录 docker-compose.yml / .env.example / nginx.conf 与 docs/remote-deploy.md。
 version: "3.8"
 
 services:

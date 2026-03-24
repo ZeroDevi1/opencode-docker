@@ -1,3 +1,5 @@
+# 模板示例 / 功能示例：此文件用于初始化或参考 `/home/devuser/.cc-connect/config.toml`。
+# 它不是仓库根目录正式远程部署入口；正式远程部署仍应优先参考根目录 `docker-compose.yml`、`.env.example`、`nginx.conf` 与 `docs/remote-deploy.md`。
 language = "zh"
 
 [log]
