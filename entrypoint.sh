@@ -69,7 +69,7 @@ with_vfox_bootstrap_lock() {
 
 bootstrap_vfox_node() {
     local node_version="${VFOX_NODE_VERSION:-22.14.0}"
-    local npm_packages="${VFOX_GLOBAL_NPM_PACKAGES:-ace-tool @upstash/context7-mcp}"
+    local npm_packages="${VFOX_GLOBAL_NPM_PACKAGES:-ace-tool @upstash/context7-mcp @gsd-build/sdk}"
 
     echo "Bootstrapping shared vfox toolchain..."
     with_vfox_bootstrap_lock gosu devuser bash -lc "

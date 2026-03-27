@@ -18,7 +18,7 @@ opencode serve --hostname 0.0.0.0 --port 4096
 - 若 `/home/devuser/.cc-connect/config.toml` 已写入真实微信 `token`，entrypoint 会额外自动启动 `cc-connect -config /home/devuser/.cc-connect/config.toml`。
 - 适合与现有 Codex 远程栈并行部署，共享 `workspace`、`.version-fox`、`.ssh`、`.gitconfig`，但分离 OpenCode 自身配置与会话数据。
 - 镜像内的 OpenCode 与 `cc-connect@beta` 会在构建阶段安装到独立目录 `/home/devuser/.local/npm-global/bin`，不会被共享的 `./version-fox` 挂载覆盖；同时镜像会提供 `/usr/local/bin/opencode`、`/usr/local/bin/cc-connect` 包装入口，并补齐 `devuser` 的 `.bashrc` / `.profile` PATH，因此 `root`、`su devuser`、`su - devuser`、`docker exec -u devuser ...` 都能直接执行这两个命令。微信模板里的 `cc-connect` 还会通过 `/usr/local/bin/opencode-attach` 调用本机 `opencode serve`，避免直接走本地 `opencode run` 的会话恢复缺陷；未显式传入 `--title` 时，它会按容器本地时区生成会话标题，避免 UI 里显示 UTC 的 `...Z` 时间。
-- Node.js、`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
+- Node.js、`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec`、`@gsd-build/sdk` 以 `vfox` 方式准备；如果挂载了共享的 `./version-fox`，容器首次启动会自动把它们初始化到该卷里，后续 `codex` 与 `opencode` 可直接复用。
 - 容器首次启动会自动初始化 `/home/devuser/.cc-connect/config.toml` 模板，并确保默认工作区 `/workspace/weixin` 存在。
 
 ## 本地构建
@@ -38,19 +38,19 @@ docker build --build-arg OPENCODE_VERSION=1.2.27 -t opencode-docker:1.2.27 .
 - `nodejs@22.14.0`
 - `bun`（官方安装脚本，默认位于 `/home/devuser/.bun/bin/bun`）
 - 独立 CLI：`opencode-ai`、`cc-connect@beta`
-- 全局 npm 包：`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec@latest`
+- 全局 npm 包：`ace-tool`、`@upstash/context7-mcp`、`@fission-ai/openspec@latest`、`@gsd-build/sdk`
 
 如需覆盖，可在运行时传入：
 
 ```bash
 -e VFOX_NODE_VERSION=22.14.0
--e VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp @fission-ai/openspec@latest"
+-e VFOX_GLOBAL_NPM_PACKAGES="ace-tool @upstash/context7-mcp @fission-ai/openspec@latest @gsd-build/sdk"
 ```
 
 构建完成后，可快速验证关键工具是否已就绪：
 
 ```bash
-docker run --rm opencode-docker:local bash -lc "docker --version && bun --version && opencode --version && cc-connect --version && openspec --version"
+docker run --rm opencode-docker:local bash -lc "docker --version && bun --version && opencode --version && cc-connect --version && openspec --version && gsd-sdk --version"
 ```
 
 如果你想额外确认 `root` 与非登录 `devuser` shell 的 PATH/Node 都正常，可再执行：

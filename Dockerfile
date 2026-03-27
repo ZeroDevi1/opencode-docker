@@ -100,7 +100,7 @@ RUN bash -lc " \
 RUN bash -lc " \
     corepack enable && \
     corepack prepare pnpm@latest --activate && \
-    npm install -g ace-tool @upstash/context7-mcp @fission-ai/openspec@latest \
+    npm install -g ace-tool @upstash/context7-mcp @fission-ai/openspec@latest @gsd-build/sdk \
 "
 
 # 使用 npm 全局安装 opencode-ai 与 cc-connect，避免共享 vfox 卷覆盖 CLI
