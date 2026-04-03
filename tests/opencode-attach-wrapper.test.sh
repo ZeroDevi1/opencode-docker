@@ -21,12 +21,6 @@ trap cleanup EXIT
 
 mkdir -p "${fake_bin}" "${target_dir}"
 
-cat > "${fake_bin}/date" <<'EOF'
-#!/bin/bash
-printf '2026-03-24 12:14:43 CST\n'
-EOF
-chmod +x "${fake_bin}/date"
-
 cat > "${target_path}" <<EOF
 #!/bin/bash
 printf '%s\n' "\$*" > "${args_log}"
@@ -54,7 +48,6 @@ for expected_fragment in \
     'run ' \
     '--attach http://127.0.0.1:4096' \
     '--password secret-pass' \
-    '--title New session - 2026-03-24 12:14:43 CST' \
     '--dir /workspace/weixin' \
     'hello'; do
     case "${logged_args}" in
@@ -65,6 +58,13 @@ for expected_fragment in \
             ;;
     esac
 done
+
+case "${logged_args}" in
+    *'--title '*)
+        printf 'default run should not inject a title: %s\n' "${logged_args}" >&2
+        exit 1
+        ;;
+esac
 
 OPENCODE_SERVER_PASSWORD='secret-pass' \
 DEVUSER_CLI_HOME="${fake_home}" \
@@ -91,7 +91,6 @@ for expected_fragment in \
     'run ' \
     '--attach http://example.test:9999' \
     '--password explicit-pass' \
-    '--title New session - 2026-03-24 12:14:43 CST' \
     'hello'; do
     case "${logged_args}" in
         *"${expected_fragment}"*) ;;
@@ -101,6 +100,13 @@ for expected_fragment in \
             ;;
     esac
 done
+
+case "${logged_args}" in
+    *'--title '*)
+        printf 'explicit attach/password run should not inject a title: %s\n' "${logged_args}" >&2
+        exit 1
+        ;;
+esac
 
 OPENCODE_SERVER_PASSWORD='secret-pass' \
 DEVUSER_CLI_HOME="${fake_home}" \
